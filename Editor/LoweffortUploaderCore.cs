@@ -26,6 +26,19 @@ namespace PaLASOLU
 		public PlayableDirector director;
 		public TimelineAsset timeline;
 		public Dictionary<string, GameObject> bindings;
+		
+		public LoweffortUploaderContext(
+			LoweffortUploader lfUploader,
+			PlayableDirector director,
+			TimelineAsset timeline,
+			Dictionary<string, GameObject> bindings
+		)
+		{
+			this.lfUploader = lfUploader;
+			this.director = director;
+			this.timeline = timeline;
+			this.bindings = bindings;
+		}
 	}
 
 	internal class ProcessContext
@@ -38,6 +51,27 @@ namespace PaLASOLU
 		public List<(AnimationClip, GameObject)> addClips;
 		public AnimationClip mergedClip;
 		public AudioTrackVolumeData volumeData;
+
+		public ProcessContext(
+			LoweffortUploaderContext lfuCtx,
+			LoweffortUploader lfUploader,
+			PlayableDirector director,
+			TimelineAsset timeline,
+			Dictionary<string, GameObject> bindings,
+			List<(AnimationClip, GameObject)> addClips,
+			AnimationClip mergedClip,
+			AudioTrackVolumeData volumeData
+		)
+		{
+			this.lfuCtx = lfuCtx;
+			this.lfUploader = lfUploader;
+			this.director = director;
+			this.timeline = timeline;
+			this.bindings = bindings;
+			this.addClips = addClips;
+			this.mergedClip = mergedClip;
+			this.volumeData = volumeData;
+		}
 	}
 
 	public partial class LoweffortUploaderCore : Plugin<LoweffortUploaderCore>
@@ -50,19 +84,26 @@ namespace PaLASOLU
 			{
 				LoweffortUploaderState lfuState = ctx.GetState<LoweffortUploaderState>();
 				HashSet<TimelineAsset> seenTimelines = new HashSet<TimelineAsset>();
+				
+				var children = ctx.AvatarRootObject.GetComponentsInChildren<LoweffortUploader>(true);
+				if (children == null)
+				{
+					LogMessageSimplifier.PaLog(0, "Low-effort Uploader コンポーネントが見つかりませんでした。処理はスキップされます。");
+					return;
+				}
 
-				foreach (LoweffortUploader lfUploader_finded in ctx?.AvatarRootObject.GetComponentsInChildren<LoweffortUploader>(true))
+				foreach (LoweffortUploader lfUploader_finded in children)
 				{
 					string lfUploader_ObjectName = lfUploader_finded.gameObject.name;
 
-					PlayableDirector director_finded = lfUploader_finded.director;
+					PlayableDirector? director_finded = lfUploader_finded.director;
 					if (director_finded == null)
 					{
 						LogMessageSimplifier.PaLog(2, $"{lfUploader_ObjectName} の PaLASOLU Low-effort Uploader に PlayableDirector コンポーネントが設定されていません！Low-effort Uploaderの処理はスキップされます。\nPaLASOLU Setup Optimization からセットアップを行った場合、{lfUploader_ObjectName} GameObject の、 PaLASOLU Low-eoofrt Uploader コンポーネント内の、「高度な設定」から Playable Director がNoneでないことを確認してください。");
 						continue;
 					}
 
-					TimelineAsset timeline_finded = lfUploader_finded.timeline;
+					TimelineAsset? timeline_finded = lfUploader_finded.timeline;
 					if (timeline_finded == null)
 					{
 						LogMessageSimplifier.PaLog(2, $"{lfUploader_ObjectName} の PlayableDirector に Timeline Asset アセットが設定されていません！Low-effort Uploaderの処理はスキップされます。\nPaLASOLU Setup Optimization からセットアップを行った場合、{lfUploader_ObjectName} GameObject の、 PlayableDirector コンポーネント内の、 Playable が None でないことを確認してください。");
@@ -75,20 +116,24 @@ namespace PaLASOLU
 						continue;
 					}
 
-					LoweffortUploaderContext uploaderCtx = new LoweffortUploaderContext
-					{
-						lfUploader = lfUploader_finded,
-						director = director_finded,
-						timeline = timeline_finded,
-						bindings = new Dictionary<string, GameObject>()
-					};
+					LoweffortUploaderContext uploaderCtx = new LoweffortUploaderContext(
+						lfUploader: lfUploader_finded,
+						director: director_finded,
+						timeline: timeline_finded,
+						bindings: new Dictionary<string, GameObject>()
+					);
 
 					lfuState.Uploaders.Add(uploaderCtx);
 
 					if (lfUploader_finded.generateAvatarMenu)
 					{
 						GameObject basePrefab = AssetDatabase.LoadAssetAtPath<GameObject>(ParticleLiveSetup.basePrefabPath);
-						GameObject prefabInstance = PrefabUtility.InstantiatePrefab(basePrefab) as GameObject;
+						GameObject? prefabInstance = PrefabUtility.InstantiatePrefab(basePrefab) is GameObject prefabObj ? prefabObj : null;
+						if (prefabInstance == null)
+						{
+							LogMessageSimplifier.PaLog(2, $"Base Prefab の読み込みに失敗しました。パスが正しいか確認してください。 ({ParticleLiveSetup.basePrefabPath})");
+							continue;
+						}
 						PrefabUtility.UnpackPrefabInstance(prefabInstance, PrefabUnpackMode.Completely, InteractionMode.AutomatedAction);
 						prefabInstance.name = lfUploader_finded.gameObject.name + "_Base";
 						prefabInstance.transform.parent = ctx.AvatarRootTransform;
@@ -125,7 +170,7 @@ namespace PaLASOLU
 				{
 					if (lfuCtx.lfUploader == null) return;
 
-					LoweffortUploader lfUploader = lfuCtx?.lfUploader;
+					LoweffortUploader lfUploader = lfuCtx.lfUploader;
 					if (lfUploader == null) return;
 
 					if (lfuCtx.timeline == null) return;
@@ -137,7 +182,6 @@ namespace PaLASOLU
 					if (timeline == null) return;
 
 					Dictionary<string, GameObject> bindings = lfuCtx.bindings;
-					if (bindings == null) return;
 
 					AnimationClip mergedClip = new AnimationClip();
 					mergedClip.name = "mergedClip";
@@ -148,17 +192,16 @@ namespace PaLASOLU
 					//AudioVolumeManager.CleanUpVolumeData(lfuCtx.timeline);  //多分CleanUpがやりすぎるバグがあるので一旦消しておく
 					AudioTrackVolumeData volumeData = AudioVolumeManager.GetOrCreateVolumeData(lfuCtx.timeline);
 
-					ProcessContext processCtx = new ProcessContext
-					{
-						lfuCtx = lfuCtx,
-						lfUploader = lfUploader,
-						director = director,
-						timeline = timeline,
-						bindings = bindings,
-						addClips = addClips,
-						mergedClip = mergedClip,
-						volumeData = volumeData
-					};
+					ProcessContext processCtx = new ProcessContext(
+						lfuCtx: lfuCtx,
+						lfUploader: lfUploader,
+						director: director,
+						timeline: timeline,
+						bindings: bindings,
+						addClips: addClips,
+						mergedClip: mergedClip,
+						volumeData: volumeData
+					);
 
 					foreach (TrackAsset track in lfuCtx.timeline.GetOutputTracks())
 					{
@@ -174,10 +217,10 @@ namespace PaLASOLU
 						AnimationClip addAnimation = addClip.addAnim;
 						GameObject addGameObject = addClip.addObject;
 
-						Animator addAnimator = addGameObject?.GetComponent<Animator>();
+						Animator addAnimator = addGameObject.GetComponent<Animator>();
 						if (addAnimator == null) addAnimator = addGameObject.AddComponent<Animator>();
 
-						AnimatorController addController = addAnimator?.runtimeAnimatorController as AnimatorController;
+						AnimatorController? addController = addAnimator.runtimeAnimatorController as AnimatorController;
 						if (addController == null)
 						{
 							addController = new AnimatorController();
@@ -250,12 +293,18 @@ namespace PaLASOLU
 			AnimationClip mergedClip = processCtx.mergedClip;
 
 			//Animation Handling
-			if (track is AnimationTrack)
+			if (track is AnimationTrack animationTrack)
 			{
-				AnimationClip sumOfClip = (track as AnimationTrack).infiniteClip;
-				if (sumOfClip == null) sumOfClip = BakeAnimationTrackToMergedClip(track);
+				AnimationClip? sumOfClip = animationTrack.infiniteClip;
+				if (sumOfClip == null) sumOfClip = BakeAnimationTrackToMergedClip(animationTrack);
+				
+				if (sumOfClip == null)
+				{
+					LogMessageSimplifier.PaLog(1, $"{track.name} トラックのアニメーションデータの取得に失敗しました！");
+					return;
+				}
 
-				processCtx.addClips.Add((sumOfClip, processCtx.bindings[track.name]));
+				processCtx.addClips.Add((sumOfClip, processCtx.bindings[animationTrack.name]));
 			}
 
 			//Audio Handling
@@ -265,12 +314,12 @@ namespace PaLASOLU
 
 				foreach (TimelineClip nowClip in clips)
 				{
-					AudioPlayableAsset audioPlayableAsset = nowClip?.asset as AudioPlayableAsset;
-					AudioClip audioClip = audioPlayableAsset?.clip;
+					AudioPlayableAsset? audioPlayableAsset = nowClip.asset is AudioPlayableAsset apa ? apa : null;
+					AudioClip? audioClip = audioPlayableAsset?.clip;
 
-					if (audioClip == null)
+					if (audioPlayableAsset == null || audioClip == null)
 					{
-						LogMessageSimplifier.PaLog(1, $"{nowClip.displayName} にオーディオクリップが存在しません。");
+						LogMessageSimplifier.PaLog(1, $"{track.name} トラックの {nowClip.displayName} に AudioPlayableAsset または AudioClip が設定されていません！");
 						continue;
 					}
 
@@ -280,7 +329,12 @@ namespace PaLASOLU
 					if (audioClip.loadInBackground == false)
 					{
 						string audioClipPath = AssetDatabase.GetAssetPath(audioClip);
-						AudioImporter audioImporter = AssetImporter.GetAtPath(audioClipPath) as AudioImporter;
+						AudioImporter? audioImporter = AssetImporter.GetAtPath(audioClipPath) is AudioImporter ai ? ai : null;
+						if (audioImporter == null)
+						{
+							LogMessageSimplifier.PaLog(2, $"{audioClip.name} の AudioImporter の取得に失敗しました。");
+							continue;
+						}
 						audioImporter.loadInBackground = true;
 						audioImporter.SaveAndReimport();
 					}
@@ -302,7 +356,7 @@ namespace PaLASOLU
 						double startTime = nowClip.start;
 
 						AudioTrackVolumeEntity entity = processCtx.volumeData.entities.Find(e => e.trackName == trackName && e.clipName == clipName && e.start == startTime);
-						float volume = entity != null ? entity.volume : 1.0f;
+						float volume = entity?.volume ?? 1.0f;
 
 						audioSource.volume = volume;
 					}
@@ -316,7 +370,7 @@ namespace PaLASOLU
 			{
 				List<TimelineClip> clips = track.GetClips().ToList();
 
-				GameObject activateObject = processCtx.director.GetGenericBinding(track) as GameObject;
+				GameObject? activateObject = processCtx.director.GetGenericBinding(track) is GameObject go ? go : null;
 				if (activateObject == null)
 				{
 					LogMessageSimplifier.PaLog(1, $"{track.name} にGameObjectが存在しません。");
@@ -328,7 +382,13 @@ namespace PaLASOLU
 
 				string activateObjectPath = GetGameObjectPath(activateObject);
 				string rootObjectPath = GetGameObjectPath(lfUploader.gameObject);
-				EditorCurveBinding binding = AnimationEditExtension.CreateIsActiveBinding(GetRelativePath(activateObjectPath, rootObjectPath));
+				var relativePath = GetRelativePath(activateObjectPath, rootObjectPath);
+				if (relativePath == null)
+				{
+					LogMessageSimplifier.PaLog(1, $"{activateObject.name} のパスの取得に失敗しました。");
+					return;
+				}
+				EditorCurveBinding binding = AnimationEditExtension.CreateIsActiveBinding(relativePath);
 
 				AnimationCurve curve = new AnimationCurve();
 
@@ -347,17 +407,24 @@ namespace PaLASOLU
 
 				foreach (TimelineClip nowClip in clips)
 				{
-					ControlPlayableAsset controlPlayableAsset = nowClip?.asset as ControlPlayableAsset;
-					GameObject prefab = controlPlayableAsset.prefabGameObject;
+					ControlPlayableAsset? controlPlayableAsset = nowClip.asset is ControlPlayableAsset cpa ? cpa : null;
+					
+					if (controlPlayableAsset == null)
+					{
+						LogMessageSimplifier.PaLog(1, $"{track.name} トラックの {nowClip.displayName} に ControlPlayableAsset が設定されていません！");
+						continue;
+					}
+					
+					GameObject? prefab = controlPlayableAsset.prefabGameObject;
 
 					GameObject prefabObject;
 					PlayableDirector director = processCtx.director;
 
 					if (prefab != null)
 					{
-						prefabObject = GameObject.Instantiate(prefab);
 						GameObject parentObject = controlPlayableAsset.sourceGameObject.Resolve(director);
-						prefabObject.transform.SetParent(parentObject == null ? director.gameObject.transform : parentObject.transform);
+						var parentTransform = parentObject == null ? director.gameObject.transform : parentObject.transform;
+						prefabObject = Object.Instantiate(prefab,parentTransform);
 
 						GameObject transformObject = controlPlayableAsset.sourceGameObject.Resolve(director);
 						if (transformObject != null)
@@ -379,12 +446,18 @@ namespace PaLASOLU
 
 					string prefabObjectPath = GetGameObjectPath(prefabObject);
 					string rootObjectPath = GetGameObjectPath(lfUploader.gameObject);
-					GenerateAndBindActivateCurve(mergedClip, nowClip, GetRelativePath(prefabObjectPath, rootObjectPath));
+					var relativePath = GetRelativePath(prefabObjectPath, rootObjectPath);
+					if (relativePath == null)
+					{
+						LogMessageSimplifier.PaLog(1, $"{prefabObject.name} のパスの取得に失敗しました。");
+						continue;
+					}
+					GenerateAndBindActivateCurve(mergedClip, nowClip, relativePath);
 				}
 			}
 		}
 
-		private static string GetRelativePath(string fullPath, string rootPath)
+		private static string? GetRelativePath(string fullPath, string rootPath)
 		{
 			if (!fullPath.StartsWith(rootPath))
 				return null; // invalid
@@ -436,7 +509,7 @@ namespace PaLASOLU
 			return;
 		}
 
-		public static AnimationClip BakeAnimationTrackToMergedClip(TrackAsset track)
+		public static AnimationClip? BakeAnimationTrackToMergedClip(TrackAsset track)
 		{
 			if (track is not AnimationTrack animationTrack)
 			{
@@ -594,9 +667,7 @@ namespace PaLASOLU
 
 		public static bool IsLoopingTimelineClip(TimelineClip clip)
 		{
-			PlayableAsset playableAsset = clip.asset as PlayableAsset;
-			AnimationPlayableAsset animPlayable = playableAsset as AnimationPlayableAsset;
-			AudioPlayableAsset audioPlayable = playableAsset as AudioPlayableAsset;
+			PlayableAsset? playableAsset = clip.asset is PlayableAsset pa ? pa : null;
 			if ((playableAsset is not AnimationPlayableAsset) && (playableAsset is not AudioPlayableAsset))
 			{
 				return false;
@@ -605,7 +676,7 @@ namespace PaLASOLU
 			bool capsAllowLoop = (clip.clipCaps & ClipCaps.Looping) != 0;
 			bool assetAllowLoop = false;
 
-			if (playableAsset is AnimationPlayableAsset)
+			if (playableAsset is AnimationPlayableAsset animPlayable)
 			{
 				bool sourceAssetLoop = animPlayable.clip.isLooping;
 				bool assetLoop = (animPlayable.loop == AnimationPlayableAsset.LoopMode.On) || (animPlayable.loop == AnimationPlayableAsset.LoopMode.UseSourceAsset && sourceAssetLoop);
@@ -613,7 +684,7 @@ namespace PaLASOLU
 				assetAllowLoop = assetLoop;
 			}
 
-			if (playableAsset is AudioPlayableAsset)
+			if (playableAsset is AudioPlayableAsset audioPlayable)
 			{
 				assetAllowLoop = audioPlayable.loop;
 			}

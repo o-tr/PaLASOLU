@@ -19,7 +19,7 @@ namespace PaLASOLU
 				return;
 			}
 
-			TimelineAsset timeline = director.playableAsset as TimelineAsset;
+			TimelineAsset? timeline = director.playableAsset is TimelineAsset ta ? ta : null;
 			if (timeline == null)
 			{
 				LogMessageSimplifier.PaLog(1, "PlayableDirectorにTimelineがありません。処理はスキップされます。");
@@ -57,8 +57,9 @@ namespace PaLASOLU
 			{
 				if (track is AnimationTrack)
 				{
-					AnimationTrack animationTrack = track as AnimationTrack;
-					var animator = director.GetGenericBinding(track) as Animator;
+					AnimationTrack? animationTrack = track is AnimationTrack at ? at : null;
+					if (animationTrack == null) continue;
+					var animator = director.GetGenericBinding(track) is Animator a ? a : null;
 					if (animator == null) continue;
 
 					var infiniteClip = animationTrack.infiniteClip;
@@ -84,7 +85,13 @@ namespace PaLASOLU
 
 			//Outstream
 			string outputPath = $"Packages/info.glintfraulein.palasolu/Generated/RecordedClipBindingMap_{director.gameObject.name}.json";
-			Directory.CreateDirectory(Path.GetDirectoryName(outputPath));
+			var outputDir = Path.GetDirectoryName(outputPath);
+			if (outputDir == null)
+			{
+				LogMessageSimplifier.PaLog(2, "出力パスのディレクトリ名が取得できません。処理は中止されます。");
+				return;
+			}
+			Directory.CreateDirectory(outputDir);
 			string json = JsonUtility.ToJson(new ClipBindingInfoList { bindings = bindings }, true);
 			File.WriteAllText(outputPath, json);
 			AssetDatabase.Refresh();

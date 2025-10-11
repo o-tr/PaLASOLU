@@ -25,8 +25,6 @@ namespace PaLASOLU
 			if (num % 3 == 0) Debug.Log(returnMessage + message);
 			else if (num % 3 == 1) Debug.LogWarning(returnMessage + message);
 			else if (num % 3 == 2) Debug.LogError(returnMessage + message);
-
-			return;
 		}
 	}
 }

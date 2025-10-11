@@ -22,6 +22,14 @@ namespace PaLASOLU
 		public string clipName;
 		public double start;
 		public float volume;
+
+		public AudioTrackVolumeEntity(string trackName, string clipName, double start, float volume)
+		{
+			this.trackName = trackName;
+			this.clipName = clipName;
+			this.start = start;
+			this.volume = volume;
+		}
 	}
 
 	[CustomEditor(typeof(AudioPlayableAsset))]
@@ -38,14 +46,29 @@ namespace PaLASOLU
 			if (EditorGUI.EndChangeCheck())
 			{
 				AudioPlayableAsset asset = (AudioPlayableAsset)target;
-				TimelineAsset timeline = GetTimelineAsset(asset);
-				TrackAsset track = FindParentTrack(asset);
+				TimelineAsset? timeline = GetTimelineAsset(asset);
+				TrackAsset? track = FindParentTrack(asset);
+				if (track == null)
+				{
+					LogMessageSimplifier.PaLog(4, "track is null");
+					return;
+				}
 
 				string trackName = track.name;
 				string clipName = asset.clip.name;
+				if (timeline == null || track == null)
+				{
+					LogMessageSimplifier.PaLog(4, "timeline or track is null");
+					return;
+				}
 
 				//start time
-				TimelineClip clip = FindClipManually(asset);
+				TimelineClip? clip = FindClipManually(asset);
+				if (clip == null)
+				{
+					LogMessageSimplifier.PaLog(4, "clip is null");
+					return;
+				}
 				double startTime = clip.start;
 
 				//"volume" Property serch
@@ -68,13 +91,12 @@ namespace PaLASOLU
 				);
 				if (entity == null)
 				{
-					entity = new AudioTrackVolumeEntity
-					{
-						trackName = trackName,
-						clipName = clipName,
-						start = startTime,
-						volume = volumeValue
-					};
+					entity = new AudioTrackVolumeEntity(
+						trackName: trackName,
+						clipName: clipName,
+						start: startTime,
+						volume: volumeValue
+					);
 					volumeData.entities.Add(entity);
 				}
 				else
@@ -87,10 +109,10 @@ namespace PaLASOLU
 			}
 		}
 
-		public static AudioTrackVolumeData GetOrCreateVolumeData(TimelineAsset timeline)
+		public static AudioTrackVolumeData GetOrCreateVolumeData(TimelineAsset? timeline)
 		{
 			string timelinePath = AssetDatabase.GetAssetPath(timeline);
-			string savePath = Path.GetDirectoryName(timelinePath);
+			string savePath = Path.GetDirectoryName(timelinePath) ?? "Assets";
 			string timelineName = Path.GetFileNameWithoutExtension(timelinePath);
 
 			string saveDirectory = savePath + "/(PaLASOLU)";
@@ -108,30 +130,30 @@ namespace PaLASOLU
 			return volumeData;
 		}
 
-		TimelineAsset GetTimelineAsset(AudioPlayableAsset asset)
+		TimelineAsset? GetTimelineAsset(AudioPlayableAsset asset)
 		{
 			// ここは必ず渡せるわけではないので、もし必要なら PlayableDirector 経由で見つける
 			return AssetDatabase.LoadAllAssetsAtPath(AssetDatabase.GetAssetPath(asset)).OfType<TimelineAsset>().FirstOrDefault();
 		}
 
-		TrackAsset FindParentTrack(AudioPlayableAsset asset)
+		TrackAsset? FindParentTrack(AudioPlayableAsset asset)
 		{
-			if (TryFindClipAndTrack(asset, out TrackAsset track, out _)) return track;
+			if (TryFindClipAndTrack(asset, out TrackAsset? track, out _)) return track;
 			else return null;
 		}
 
-		TimelineClip FindClipManually(AudioPlayableAsset asset)
+		TimelineClip? FindClipManually(AudioPlayableAsset asset)
 		{
-			if (TryFindClipAndTrack(asset, out _, out TimelineClip clip)) return clip;
+			if (TryFindClipAndTrack(asset, out _, out TimelineClip? clip)) return clip;
 			else return null;
 		}
 
-		bool TryFindClipAndTrack(AudioPlayableAsset asset, out TrackAsset track, out TimelineClip clip)
+		bool TryFindClipAndTrack(AudioPlayableAsset asset, out TrackAsset? track, out TimelineClip? clip)
 		{
 			track = null;
 			clip = null;
 
-			TimelineAsset timeline = GetTimelineAsset(asset);
+			TimelineAsset? timeline = GetTimelineAsset(asset);
 			if (timeline == null) return false;
 
 			foreach (var nowTrack in timeline.GetOutputTracks())

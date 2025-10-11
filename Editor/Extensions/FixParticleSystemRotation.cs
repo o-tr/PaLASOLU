@@ -65,7 +65,7 @@ namespace PaLASOLU
 
 			foreach (int id in newIDs)
 			{
-				GameObject obj = EditorUtility.InstanceIDToObject(id) as GameObject;
+				var obj = EditorUtility.InstanceIDToObject(id) is GameObject o ? o : null;
 				if (obj == null) continue;
 
 				ParticleSystem ps = obj.GetComponent<ParticleSystem>();

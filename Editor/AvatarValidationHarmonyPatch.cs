@@ -28,7 +28,7 @@ namespace PaLASOLU
 				return;
 			}
 
-			var findIllegalComponents = AccessTools.Method(avatarValidationType, "FindIllegalComponents", new[] { typeof(UnityEngine.GameObject) });
+			var findIllegalComponents = AccessTools.Method(avatarValidationType, "FindIllegalComponents", new[] { typeof(GameObject) });
 			if (findIllegalComponents == null)
 			{
 				LogMessageSimplifier.PaLog(5, "FindIllegalComponents method not found in VRC.SDK3.Validation.AvatarValidation. Harmony patch will not be applied.");
@@ -42,7 +42,7 @@ namespace PaLASOLU
 
 		private static void FindIllegalComponentsPostfix(GameObject target, ref IEnumerable<Component> __result)
 		{
-			if (__result == null) return;
+			// if (__result == null) return;
 
 			// Filter out PlayableDirector with LoweffortUploader component attached
 			__result = __result.Where(c =>

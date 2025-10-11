@@ -13,8 +13,8 @@ namespace PaLASOLU
 	[DisallowMultipleComponent]
 	public class LoweffortUploader : MonoBehaviour, IEditorOnly
 	{
-		public PlayableDirector director;
-		public TimelineAsset timeline;
+		public PlayableDirector? director;
+		public TimelineAsset? timeline;
 		public bool generateAvatarMenu = false;
 		public bool generateAudioObject = true;
 		public bool isAffectedAudioVolume = false;
@@ -52,14 +52,15 @@ namespace PaLASOLU
 				if (advancedSettings = EditorGUILayout.Foldout(advancedSettings, "高度な設定"))
 				{
 					uploader.generateAvatarMenu = EditorGUILayout.Toggle("Generate Avatar Menu", uploader.generateAvatarMenu);
-					uploader.director = EditorGUILayout.ObjectField("PlayableDirector", uploader.director, typeof(PlayableDirector), true) as PlayableDirector;
+					uploader.director = EditorGUILayout.ObjectField("PlayableDirector", uploader.director, typeof(PlayableDirector), true) is PlayableDirector dir ? dir : null;
 					uploader.generateAudioObject = EditorGUILayout.Toggle("Generate Audio object", uploader.generateAudioObject);
 					uploader.isAffectedAudioVolume = EditorGUILayout.Toggle("Affect AudioTrack Volume ", uploader.isAffectedAudioVolume);
 				}
 
 				if (GUI.changed)
 				{
-					if (uploader.director != null) uploader.timeline = uploader.director.playableAsset as TimelineAsset;
+					if (uploader.director != null) uploader.timeline = uploader.director.playableAsset is TimelineAsset ta ? ta : null;
+					else uploader.timeline = null;
 					EditorUtility.SetDirty(uploader);
 				}
 			}

@@ -197,7 +197,7 @@ namespace PaLASOLU
 
 			//相対パスを得る
 			string timelinePath = AssetDatabase.GetAssetPath(timeline);
-			string directoryPath = Path.GetDirectoryName(timelinePath);
+			string directoryPath = Path.GetDirectoryName(timelinePath) ?? "Assets";
 			string saveDirectory = directoryPath + "/(PaLASOLU)";
 			if (!Directory.Exists(saveDirectory)) Directory.CreateDirectory(saveDirectory);
 
@@ -238,7 +238,7 @@ namespace PaLASOLU
 			bool isAuto = dir == FadeDirection.In ? isEaseInAuto : isEaseOutAuto;
 
 			if (isAuto) return isIn ? AnimationCurve.EaseInOut(0, 0, 1, 1) : AnimationCurve.EaseInOut(0, 1, 1, 0);
-			else return manualCurve ?? (isIn ? AnimationCurve.Linear(0, 0, 1, 1) : AnimationCurve.Linear(0, 1, 1, 0));
+			else return manualCurve;
 		}
 	}
 }

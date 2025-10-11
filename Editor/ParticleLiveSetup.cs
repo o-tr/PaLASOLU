@@ -17,13 +17,13 @@ namespace PaLASOLU
 		const string basePlayablePath = "Packages/info.glintfraulein.palasolu/Runtime/Prefab/PaLASOLU_v2_Playable.prefab";
 		const string bannerPath = "Packages/info.glintfraulein.palasolu//Image/PaLASOLU_Banner.png";
 
-		AudioClip particleLiveAudio = null;
+		AudioClip? particleLiveAudio;
 		string rootFolderName = string.Empty;
-		bool IsShowAdvancedSettings = false;
-		bool advancedSetup = false;
-		bool selectFolder = false;
-		bool moveAudioClip = false;
-		bool existTimeline = false;
+		bool IsShowAdvancedSettings;
+		bool advancedSetup;
+		bool selectFolder;
+		bool moveAudioClip;
+		bool existTimeline;
 		bool timelineLockNotice = true;
 		static Texture banner = null;
 
@@ -124,7 +124,12 @@ namespace PaLASOLU
 
 			//Setup Prefab Instance
 			GameObject basePlayable = AssetDatabase.LoadAssetAtPath<GameObject>(basePlayablePath);
-			GameObject playableInstance = PrefabUtility.InstantiatePrefab(basePlayable) as GameObject;
+			GameObject? playableInstance = PrefabUtility.InstantiatePrefab(basePlayable) is GameObject go ? go : null;
+			if (playableInstance == null)
+			{
+				LogMessageSimplifier.PaLog(2, "Prefab Instance の生成に失敗しました。");
+				return;
+			}
 			playableInstance.name = rootFolderName + "_ParticleLive";
 
 			LoweffortUploader lfUploader = playableInstance.GetComponent<LoweffortUploader>();
@@ -132,7 +137,12 @@ namespace PaLASOLU
 			if (advancedSetup)
 			{
 				GameObject basePrefab = AssetDatabase.LoadAssetAtPath<GameObject>(basePrefabPath);
-				GameObject prefabInstance = PrefabUtility.InstantiatePrefab(basePrefab) as GameObject;
+				GameObject? prefabInstance = PrefabUtility.InstantiatePrefab(basePrefab) is GameObject go2 ? go2 : null;
+				if (prefabInstance == null)
+				{
+					LogMessageSimplifier.PaLog(2, "Prefab Instance の生成に失敗しました。");
+					return;
+				}
 				prefabInstance.name = rootFolderName + "_Base";
 
 				playableInstance.transform.parent = prefabInstance.transform.Find("WorldFixed");
@@ -161,7 +171,12 @@ namespace PaLASOLU
 					audioClipOnTrack.displayName = Path.GetFileNameWithoutExtension(particleLiveAudio.name);
 					audioClipOnTrack.duration = particleLiveAudio.length;
 
-					AudioPlayableAsset audioAsset = audioClipOnTrack.asset as AudioPlayableAsset;
+					AudioPlayableAsset? audioAsset = audioClipOnTrack.asset is AudioPlayableAsset acot ? acot : null;
+					if (audioAsset == null)
+					{
+						LogMessageSimplifier.PaLog(2, "AudioPlayableAsset の生成に失敗しました。");
+						return;
+					}
 					audioAsset.clip = particleLiveAudio;
 				}
 			}
@@ -172,7 +187,7 @@ namespace PaLASOLU
 
 			//Open Timeline window
 			//WARNING : Using Internal API!!
-			Type typeTimelineWindow = null;
+			Type? typeTimelineWindow = null;
 			foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
 			{
 				typeTimelineWindow = asm.GetType("UnityEditor.Timeline.TimelineWindow");

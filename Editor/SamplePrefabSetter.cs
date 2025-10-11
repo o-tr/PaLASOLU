@@ -14,7 +14,7 @@ namespace PaLASOLU
 		static void SetPaLASOLUIntroduction()
 		{
 			GameObject introductionPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(introductionPath);
-			GameObject introductionObject = PrefabUtility.InstantiatePrefab(introductionPrefab) as GameObject;
+			GameObject? introductionObject = PrefabUtility.InstantiatePrefab(introductionPrefab) is GameObject obj ? obj : null;
 
 			Selection.activeGameObject = introductionObject;
 			EditorUtility.SetDirty(introductionObject);
