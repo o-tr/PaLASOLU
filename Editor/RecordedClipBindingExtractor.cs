@@ -1,4 +1,6 @@
-﻿using UnityEngine;
+﻿#nullable enable
+
+using UnityEngine;
 using UnityEditor;
 using UnityEngine.Timeline;
 using System.IO;

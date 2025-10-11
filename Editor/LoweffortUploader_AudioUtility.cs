@@ -1,4 +1,6 @@
-﻿using nadena.dev.ndmf;
+﻿#nullable enable
+
+using nadena.dev.ndmf;
 using PaLASOLU;
 using System.IO;
 using UnityEditor;

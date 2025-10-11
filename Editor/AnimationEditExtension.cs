@@ -1,4 +1,6 @@
-﻿using UnityEditor;
+﻿#nullable enable
+
+using UnityEditor;
 using UnityEngine;
 
 namespace PaLASOLU
